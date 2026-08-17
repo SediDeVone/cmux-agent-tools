@@ -1,6 +1,6 @@
-# cmux_automation
+# cmux-agent-tools
 
-A central repository containing `cmux` integration rules and skills for AI agents (Gemini/Antigravity and Claude). 
+A centralized collection of developer configurations, agent instructions, and reference skills designed to help AI coding agents (like Claude and Gemini) seamlessly interact with and present workspace details in the `cmux` terminal.
 
 By storing these configurations here and symlinking them to your various workspace and global agent config paths, you can easily version control, customize, and share your `cmux` integrations!
 
@@ -9,13 +9,15 @@ By storing these configurations here and symlinking them to your various workspa
 ## Repository Structure
 
 ```text
-cmux_automation/
+cmux-agent-tools/
 ├── rules/
 │   └── cmux.md           # Instructions on how and when the agent should use cmux (live rendering, diffs, etc.)
 ├── skills/
 │   └── cmux-guide/
 │       └── SKILL.md      # A unified reference sheet of cmux CLI & browser commands for the agent
 ├── install.sh            # Setup helper to symlink rules and skills
+├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
@@ -23,7 +25,7 @@ cmux_automation/
 
 ## Installation
 
-Run the `install.sh` script to symlink the rules and skills to your target directory. Symlinking ensures that whenever you pull updates or make changes to this repository, your agents immediately see them!
+Run the `install.sh` script to symlink the rules and skills to your target environment directories. Symlinking ensures that whenever you pull updates or make changes to this repository, your agents immediately see them!
 
 ### Options
 
