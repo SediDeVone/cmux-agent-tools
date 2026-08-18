@@ -1,19 +1,21 @@
 #!/bin/bash
-# install.sh - Installs cmux rules and skills by symlinking them to the target environment directories.
+# install.sh - Installs cmux rules, skills, and hooks by symlinking them to the target environment directories.
 
 set -e
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RULE_SRC="${REPO_DIR}/rules/cmux.md"
 SKILL_SRC="${REPO_DIR}/skills/cmux-guide/SKILL.md"
+HOOK_SRC="${REPO_DIR}/hooks/post-tool.py"
+HOOKS_CONFIG_SRC="${REPO_DIR}/hooks.json"
 
 show_help() {
     echo "Usage: ./install.sh [options]"
     echo ""
     echo "Options:"
-    echo "  -w, --workspace      Install rules & skills to the current directory's .agents/ directory"
-    echo "  -c, --claude         Install rules & skills to the global ~/.claude/ directory"
-    echo "  -g, --gemini         Install rules & skills to the global ~/.gemini/config/ directory"
+    echo "  -w, --workspace      Install rules, skills & hooks to the current directory's .agents/ directory"
+    echo "  -c, --claude         Install rules, skills & hooks to the global ~/.claude/ directory"
+    echo "  -g, --gemini         Install rules, skills & hooks to the global ~/.gemini/config/ directory"
     echo "  -a, --all            Install to all targets"
     echo "  -h, --help           Show this help message"
 }
@@ -22,8 +24,8 @@ symlink_file() {
     local src="$1"
     local dest="$2"
     mkdir -p "$(dirname "$dest")"
-    if [ -L "$dest" ] || [ -f "$dest" ]; then
-        rm -f "$dest"
+    if [ -L "$dest" ] || [ -f "$dest" ] || [ -d "$dest" ]; then
+        rm -rf "$dest"
     fi
     ln -s "$src" "$dest"
     echo "Linked: $dest -> $src"
@@ -78,6 +80,8 @@ install_workspace() {
     echo "Installing to workspace: $target_dir"
     symlink_file "$RULE_SRC" "${target_dir}/rules/cmux.md"
     symlink_file "$SKILL_SRC" "${target_dir}/skills/cmux-guide/SKILL.md"
+    symlink_file "${REPO_DIR}/hooks" "${target_dir}/hooks"
+    symlink_file "$HOOKS_CONFIG_SRC" "${target_dir}/hooks.json"
     echo "Workspace installation complete! 🎉"
 }
 
@@ -86,7 +90,43 @@ install_claude() {
     echo "Installing to Claude global config: $target_dir"
     symlink_file "$RULE_SRC" "${target_dir}/rules/cmux.md"
     symlink_file "$SKILL_SRC" "${target_dir}/skills/cmux-guide/SKILL.md"
+    symlink_file "$HOOK_SRC" "${target_dir}/hooks/post-tool.py"
     append_to_claude_md "${target_dir}/CLAUDE.md"
+    
+    # Update Claude settings.json with hook
+    python3 -c '
+import json
+import os
+settings_path = os.path.expanduser("~/.claude/settings.json")
+if os.path.exists(settings_path):
+    with open(settings_path, "r") as f:
+        data = json.load(f)
+    if "hooks" not in data:
+        data["hooks"] = {}
+    if "PostToolUse" not in data["hooks"]:
+        data["hooks"]["PostToolUse"] = []
+    already_registered = False
+    for item in data["hooks"]["PostToolUse"]:
+        for h in item.get("hooks", []):
+            if "post-tool.py" in h.get("command", ""):
+                already_registered = True
+                break
+    if not already_registered:
+        new_hook = {
+            "matcher": "Edit|Write|write_file|edit_file",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "python3 ~/.claude/hooks/post-tool.py",
+                    "async": True
+                }
+            ]
+        }
+        data["hooks"]["PostToolUse"].append(new_hook)
+        with open(settings_path, "w") as f:
+            json.dump(data, f, indent=4)
+        print("Registered cmux hook in ~/.claude/settings.json")
+'
     echo "Claude global installation complete! 🎉"
 }
 
@@ -95,6 +135,8 @@ install_gemini() {
     echo "Installing to Gemini global config: $target_dir"
     symlink_file "$RULE_SRC" "${target_dir}/rules/cmux.md"
     symlink_file "$SKILL_SRC" "${target_dir}/skills/cmux-guide/SKILL.md"
+    symlink_file "${REPO_DIR}/hooks" "${target_dir}/hooks"
+    symlink_file "$HOOKS_CONFIG_SRC" "${target_dir}/hooks.json"
     echo "Gemini global installation complete! 🎉"
 }
 

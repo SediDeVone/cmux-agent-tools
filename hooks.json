@@ -1,0 +1,16 @@
+{
+  "cmux-markdown-autoopen": {
+    "PostToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content|write_file|edit_file|str_replace_editor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./hooks/post-tool.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
