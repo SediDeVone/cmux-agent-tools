@@ -15,7 +15,16 @@ cmux-agent-tools/
 ├── skills/
 │   └── cmux-guide/
 │       └── SKILL.md      # A unified reference sheet of cmux CLI & browser commands for the agent
-├── install.sh            # Setup helper to symlink rules and skills
+├── hooks.json            # Deterministic lifecycle hook configuration (for Gemini)
+├── hooks/
+│   └── post-tool.py      # Python script that intercepts tool writes to open .md files automatically
+├── shell/
+│   └── aliases.zsh       # Shell aliases/shorthands for manually using cmux (cmdown, cmdiff, cmnotify, etc.)
+├── layouts/
+│   └── agent-center.json # Template workspace layout (main terminal, plan pane, browser preview)
+├── examples/
+│   └── browser-automation.sh # Sample shell script demonstrating cmux browser commands
+├── install.sh            # Setup helper to symlink rules, skills, hooks, and add shell aliases
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -25,7 +34,7 @@ cmux-agent-tools/
 
 ## Installation
 
-Run the `install.sh` script to symlink the rules and skills to your target environment directories. Symlinking ensures that whenever you pull updates or make changes to this repository, your agents immediately see them!
+Run the `install.sh` script to symlink the rules, skills, hooks, and optionally add shell aliases to your `~/.zshrc`.
 
 ### Options
 
@@ -36,21 +45,42 @@ Run the `install.sh` script to symlink the rules and skills to your target envir
 # Install rules & skills to the current project's `.agents/` folder:
 ./install.sh --workspace
 
-# Install to global Claude configuration (creates ~/.claude/skills/ and appends rules to CLAUDE.md):
+# Install to global Claude configuration (creates ~/.claude/skills/ and configures settings.json hooks):
 ./install.sh --claude
 
 # Install to global Gemini configuration (~/.gemini/config):
 ./install.sh --gemini
 
-# Link to all available destinations:
+# Append shell aliases to ~/.zshrc:
+./install.sh --shell
+
+# Install to all available destinations:
 ./install.sh --all
 ```
 
 ---
 
-## Features Handled By The Rules
+## Manual Shell Integration
 
-1. **Auto-Opening Markdown Files**: Automatically opens newly created or edited `.md` files in a live-reloading split viewer pane (`cmux markdown`).
-2. **Interactive Git Diffs**: Shows staged/unstaged changes or custom patch files in the `cmux` unified browser split (`cmux diff`).
-3. **Status Bar Updates**: Feeds current actions and progress values to the status display in the sidebar (`cmux set-status` and `cmux set-progress`).
-4. **Agent-Aware Notifications**: Triggers system alerts (`cmux notify`) on task completion or when input is required.
+The `shell/aliases.zsh` script provides simple shorthand commands fow working inside `cmux` manually:
+
+- **`cmdown <file>`**: Render markdown file inside `cmux` split.
+- **`cmdiff`**: Open unstaged git changes side-by-side.
+- **`cmopen <url>`**: Open a browser tab inside `cmux`.
+- **`cmnotify <title> <body>`**: Show system notification popup in `cmux`.
+- **`cmstatus <message> [icon] [color]`**: Update workspace status indicator.
+- **`cmprogress <value> [label]`**: Update progress percentage (0.0 to 1.0).
+
+*To apply aliases to your active terminal, run: `source ~/.zshrc`*
+
+---
+
+## Custom Workspace Layouts
+
+You can use [layouts/agent-center.json](file:///Users/sebastianlasisz/workspace/repositories/ai_tools/cmux_automation/layouts/agent-center.json) as a template for project-specific window layouts. Copy it to your project root under `.cmux/cmux.json` to spin up splits automatically.
+
+---
+
+## Browser Automation Example
+
+Run the demo script [examples/browser-automation.sh](file:///Users/sebastianlasisz/workspace/repositories/ai_tools/cmux_automation/examples/browser-automation.sh) to see `cmux` WebKit browser commands in action. It will navigate to GitHub, perform a search, capture page details, and save a screenshot locally!

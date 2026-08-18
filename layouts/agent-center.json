@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+  "schemaVersion": 1,
+  "commands": [
+    {
+      "name": "Agent Command Center",
+      "description": "Splits screen into a main terminal, a markdown live-reload pane, and a browser preview.",
+      "workspace": {
+        "name": "AgentCenter",
+        "cwd": ".",
+        "color": "purple",
+        "layout": {
+          "type": "split",
+          "direction": "right",
+          "panes": [
+            {
+              "type": "terminal",
+              "command": "echo 'Welcome to the Agent Command Center!' && git status"
+            },
+            {
+              "type": "split",
+              "direction": "down",
+              "panes": [
+                {
+                  "type": "terminal",
+                  "command": "cmux markdown README.md --focus false"
+                },
+                {
+                  "type": "browser",
+                  "url": "http://localhost:8080"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

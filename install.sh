@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh - Installs cmux rules, skills, and hooks by symlinking them to the target environment directories.
+# install.sh - Installs cmux rules, skills, hooks, and shell integration by symlinking them to target environment directories.
 
 set -e
 
@@ -16,7 +16,8 @@ show_help() {
     echo "  -w, --workspace      Install rules, skills & hooks to the current directory's .agents/ directory"
     echo "  -c, --claude         Install rules, skills & hooks to the global ~/.claude/ directory"
     echo "  -g, --gemini         Install rules, skills & hooks to the global ~/.gemini/config/ directory"
-    echo "  -a, --all            Install to all targets"
+    echo "  -s, --shell          Append cmux shell aliases to your ~/.zshrc"
+    echo "  -a, --all            Install to all targets (workspace, Claude, Gemini, and shell)"
     echo "  -h, --help           Show this help message"
 }
 
@@ -91,7 +92,6 @@ install_claude() {
     symlink_file "$RULE_SRC" "${target_dir}/rules/cmux.md"
     symlink_file "$SKILL_SRC" "${target_dir}/skills/cmux-guide/SKILL.md"
     
-    # We clean up any previously copied post-tool.py in .claude/hooks since Claude will use native hook
     if [ -f "${target_dir}/hooks/post-tool.py" ]; then
         rm -f "${target_dir}/hooks/post-tool.py"
     fi
@@ -111,13 +111,11 @@ if os.path.exists(settings_path):
     if "PostToolUse" not in data["hooks"]:
         data["hooks"]["PostToolUse"] = []
         
-    # Remove any existing cmux hooks (both python-based and previous native ones) to avoid duplicates
     data["hooks"]["PostToolUse"] = [
         item for item in data["hooks"]["PostToolUse"]
         if not any("cmux markdown" in h.get("command", "") or "post-tool.py" in h.get("command", "") for h in item.get("hooks", []))
     ]
     
-    # Add the native Claude hook
     native_hook = {
         "matcher": "Write",
         "condition": "file_path ends with .md",
@@ -148,6 +146,24 @@ install_gemini() {
     echo "Gemini global installation complete! 🎉"
 }
 
+install_shell_aliases() {
+    local zshrc="${HOME}/.zshrc"
+    local source_line="source ${REPO_DIR}/shell/aliases.zsh"
+    if [ -f "$zshrc" ]; then
+        if grep -q "aliases.zsh" "$zshrc"; then
+            echo "cmux aliases already sourced in ~/.zshrc"
+        else
+            echo "Adding cmux aliases to ~/.zshrc..."
+            echo "" >> "$zshrc"
+            echo "# cmux agent tools shell integration" >> "$zshrc"
+            echo "$source_line" >> "$zshrc"
+            echo "Aliases successfully added! Restart your shell or run 'source ~/.zshrc' to apply. 🎉"
+        fi
+    else
+        echo "No ~/.zshrc file found. Skipping shell integration."
+    fi
+}
+
 if [ "$#" -eq 0 ]; then
     show_help
     exit 1
@@ -167,17 +183,22 @@ while [ "$#" -gt 0 ]; do
             install_gemini
             shift
             ;;
+        -s|--shell)
+            install_shell_aliases
+            shift
+            ;;
         -a|--all)
             install_workspace
             install_claude
             install_gemini
+            install_shell_aliases
             shift
             ;;
         -h|--help)
             show_help
             exit 0
             ;;
-        * )
+        *)
             echo "Unknown option: $1"
             show_help
             exit 1
