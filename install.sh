@@ -90,10 +90,15 @@ install_claude() {
     echo "Installing to Claude global config: $target_dir"
     symlink_file "$RULE_SRC" "${target_dir}/rules/cmux.md"
     symlink_file "$SKILL_SRC" "${target_dir}/skills/cmux-guide/SKILL.md"
-    symlink_file "$HOOK_SRC" "${target_dir}/hooks/post-tool.py"
+    
+    # We clean up any previously copied post-tool.py in .claude/hooks since Claude will use native hook
+    if [ -f "${target_dir}/hooks/post-tool.py" ]; then
+        rm -f "${target_dir}/hooks/post-tool.py"
+    fi
+    
     append_to_claude_md "${target_dir}/CLAUDE.md"
     
-    # Update Claude settings.json with hook
+    # Update Claude settings.json with native hook
     python3 -c '
 import json
 import os
@@ -105,27 +110,30 @@ if os.path.exists(settings_path):
         data["hooks"] = {}
     if "PostToolUse" not in data["hooks"]:
         data["hooks"]["PostToolUse"] = []
-    already_registered = False
-    for item in data["hooks"]["PostToolUse"]:
-        for h in item.get("hooks", []):
-            if "post-tool.py" in h.get("command", ""):
-                already_registered = True
-                break
-    if not already_registered:
-        new_hook = {
-            "matcher": "Edit|Write|write_file|edit_file",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": "python3 ~/.claude/hooks/post-tool.py",
-                    "async": True
-                }
-            ]
-        }
-        data["hooks"]["PostToolUse"].append(new_hook)
-        with open(settings_path, "w") as f:
-            json.dump(data, f, indent=4)
-        print("Registered cmux hook in ~/.claude/settings.json")
+        
+    # Remove any existing cmux hooks (both python-based and previous native ones) to avoid duplicates
+    data["hooks"]["PostToolUse"] = [
+        item for item in data["hooks"]["PostToolUse"]
+        if not any("cmux markdown" in h.get("command", "") or "post-tool.py" in h.get("command", "") for h in item.get("hooks", []))
+    ]
+    
+    # Add the native Claude hook
+    native_hook = {
+        "matcher": "Write",
+        "condition": "file_path ends with .md",
+        "hooks": [
+            {
+                "type": "command",
+                "command": "cmux markdown \"${file_path}\" --focus false",
+                "async": True,
+                "statusMessage": "Opening markdown in cmux..."
+            }
+        ]
+    }
+    data["hooks"]["PostToolUse"].append(native_hook)
+    with open(settings_path, "w") as f:
+        json.dump(data, f, indent=4)
+    print("Registered cmux native hook in ~/.claude/settings.json")
 '
     echo "Claude global installation complete! 🎉"
 }
@@ -169,7 +177,7 @@ while [ "$#" -gt 0 ]; do
             show_help
             exit 0
             ;;
-        *)
+        * )
             echo "Unknown option: $1"
             show_help
             exit 1
