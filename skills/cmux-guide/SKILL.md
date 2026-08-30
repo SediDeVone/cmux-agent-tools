@@ -89,3 +89,17 @@ cmux notify --title "<title>" [--subtitle "<subtitle>"] [--body "<body>"]
 - **Type text**: `cmux browser type "#username" "my_username"`
 - **Get page text**: `cmux browser get text`
 - **Evaluate JS**: `cmux browser eval "document.title"`
+
+---
+
+## 5. Spawning Dev Servers & Background Workflows
+
+When launching long-running processes (like backend servers, database proxies, or frontend watchers) that require continuous log tracking, do NOT run them as silent background agent tasks. Instead, spawn them in a new `cmux` workspace (tab) so they are visible, interactive, and easy to monitor.
+
+### Command Example:
+```bash
+cmux new-workspace --cwd "<path-to-project-root>" --command "node --env-file=.env backend/server.js"
+```
+
+This command creates a new workspace tab, sets its current working directory, starts the server process inside it, and keeps the terminal window open for log inspection.
+
