@@ -8,6 +8,8 @@ RULE_SRC="${REPO_DIR}/rules/cmux.md"
 SKILL_SRC="${REPO_DIR}/skills/cmux-guide/SKILL.md"
 HOOK_SRC="${REPO_DIR}/hooks/post-tool.py"
 HOOKS_CONFIG_SRC="${REPO_DIR}/hooks.json"
+BIN_SRC="${REPO_DIR}/bin/cmux-md"
+BIN_DEST_DIR="${HOME}/.local/bin"
 
 show_help() {
     echo "Usage: ./install.sh [options]"
@@ -16,8 +18,9 @@ show_help() {
     echo "  -w, --workspace      Install rules, skills & hooks to the current directory's .agents/ directory"
     echo "  -c, --claude         Install rules, skills & hooks to the global ~/.claude/ directory"
     echo "  -g, --gemini         Install rules, skills & hooks to the global ~/.gemini/config/ directory"
+    echo "  -b, --bin            Install the cmux-md wrapper into ~/.local/bin"
     echo "  -s, --shell          Append cmux shell aliases to your ~/.zshrc"
-    echo "  -a, --all            Install to all targets (workspace, Claude, Gemini, and shell)"
+    echo "  -a, --all            Install to all targets (workspace, Claude, Gemini, bin, and shell)"
     echo "  -h, --help           Show this help message"
 }
 
@@ -146,6 +149,20 @@ install_gemini() {
     echo "Gemini global installation complete! 🎉"
 }
 
+install_bin() {
+    if [ ! -f "$BIN_SRC" ]; then
+        echo "Warning: $BIN_SRC not found; skipping cmux-md install"
+        return 0
+    fi
+    chmod +x "$BIN_SRC"
+    mkdir -p "$BIN_DEST_DIR"
+    symlink_file "$BIN_SRC" "${BIN_DEST_DIR}/cmux-md"
+    case ":${PATH}:" in
+        *":${BIN_DEST_DIR}:"*) ;;
+        *) echo "Note: ${BIN_DEST_DIR} is not on your PATH — add it so agents can call cmux-md." ;;
+    esac
+}
+
 install_shell_aliases() {
     local zshrc="${HOME}/.zshrc"
     local source_line="source ${REPO_DIR}/shell/aliases.zsh"
@@ -183,6 +200,10 @@ while [ "$#" -gt 0 ]; do
             install_gemini
             shift
             ;;
+        -b|--bin)
+            install_bin
+            shift
+            ;;
         -s|--shell)
             install_shell_aliases
             shift
@@ -191,6 +212,7 @@ while [ "$#" -gt 0 ]; do
             install_workspace
             install_claude
             install_gemini
+            install_bin
             install_shell_aliases
             shift
             ;;
