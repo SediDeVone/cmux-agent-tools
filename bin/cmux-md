@@ -91,11 +91,11 @@ label_for() {
 # Title-based fallback for tabs we did not open ourselves.
 # Never matches a surface the registry already binds to a DIFFERENT path —
 # that is how a bare "README.md" tab used to hijack every other README.
-lookup_by_title() {  # $1 ws  $2 basename  $3 label  $4 abs
+lookup_by_title() {  # $1 ws  $3 label  $4 abs   ($2 kept for call-site symmetry)
   local reg; reg="$(reg_file "$1")"
-  tree_surfaces "$1" | awk -F'\t' -v b="$2" -v l="$3" -v reg="$reg" -v abs="$4" '
+  tree_surfaces "$1" | awk -F'\t' -v l="$3" -v reg="$reg" -v abs="$4" '
     BEGIN { if (reg != "") while ((getline line < reg) > 0) { split(line, a, "\t"); owner[a[1]] = a[2] } }
-    $5=="markdown" && ($6==b || $6==l) {
+    $5=="markdown" && $6==l {
       if (($3 in owner) && owner[$3] != abs) next
       print $3; exit
     }'
@@ -186,12 +186,15 @@ cmd_open() {
   prune_registry "$ws"
 
   existing="$(lookup_surface "$ws" "$abs")"
-  [ -n "$existing" ] || existing="$(lookup_by_title "$ws" "$base" "$label" "$abs")"
   if [ -n "$existing" ]; then
-    register "$ws" "$existing" "$abs"
-    # Normalise legacy bare-basename titles.
+    # Registry match is keyed on the absolute path, so relabelling is safe.
     cur="$(field_of_surface "$ws" "$existing" 4)"
     [ -n "$cur" ] && cmux rename-tab --workspace "$ws" --surface "$cur" "$label" >/dev/null 2>&1
+  else
+    existing="$(lookup_by_title "$ws" "$base" "$label" "$abs")"
+  fi
+  if [ -n "$existing" ]; then
+    register "$ws" "$existing" "$abs"
     if [ "$focus" = "true" ]; then
       cur="$(field_of_surface "$ws" "$existing" 2)"
       [ -n "$cur" ] && cmux focus-pane --workspace "$ws" --pane "$cur" >/dev/null 2>&1
@@ -206,8 +209,13 @@ cmd_open() {
     || die "cmux markdown failed: $out"
   refresh
 
-  uuid="$(lookup_by_title "$ws" "$base" "$label" "$abs")"
-  sid="${uuid:-}"
+  # Resolve the surface ref cmux just returned to a stable UUID. Matching on title
+  # would fail here: a freshly opened tab still carries the bare basename.
+  local newref
+  newref="$(printf '%s' "$out" | sed -n 's/.*surface=\([^ ]*\).*/\1/p')"
+  sid=""
+  [ -n "$newref" ] && sid="$(tree_surfaces "$ws" | awk -F'\t' -v r="$newref" '$4==r{print $3; exit}')"
+  [ -n "$sid" ] || sid="$(lookup_by_title "$ws" "$base" "$label" "$abs")"
 
   # Disambiguate the tab title so basename collisions cannot false-match later.
   if [ -n "$sid" ]; then
